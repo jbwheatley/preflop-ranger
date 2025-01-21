@@ -1,0 +1,4 @@
+.nohover:hover {
+    -fx-background-color: transparent;
+    -fx-text-fill: lightgray;
+}

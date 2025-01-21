@@ -1,0 +1,137 @@
+name: Release Application
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        type: String
+        required: true
+    secrets:
+      github-packages-token:
+        required: true
+
+permissions:
+  contents: write
+  packages: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  create-tag:
+    name: Create Tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Tag
+        uses: actions/github-script@v5
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'refs/tags/v${{ inputs.version }}',
+              sha: context.sha
+            })
+  release:
+    name: Release Preflop Ranger
+    needs: [ create-tag ]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-13, macos-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: zulu
+          java-version: 21
+          cache: sbt
+      - name: Setup SBT
+        uses: sbt/setup-sbt@v1
+
+      - name: Set Version
+        run: |
+          echo "${{ inputs.version }}" > src/main/resources/version
+          
+
+      - name: SBT Assembly
+        env:
+          VERSION: ${{ inputs.version }}
+        run:
+          sbt assembly
+
+      - name: Determine OS Specifics
+        id: os-specifics
+        run: |
+          case ${{ matrix.os }} in 
+            "macos-13")
+              echo "type=dmg" >> "$GITHUB_OUTPUT"
+              echo "os=macos-x64" >> "$GITHUB_OUTPUT"
+              echo "icon_path=icons/ranger.icns" >> "$GITHUB_OUTPUT"
+              ;;
+            "macos-latest")
+              echo "type=dmg" >> "$GITHUB_OUTPUT"
+              echo "os=macos-arm64" >> "GITHUB_OUTPUT"
+              echo "icon_path=icons/ranger.icns" >> "$GITHUB_OUTPUT"
+              ;;
+            "windows-latest")
+              echo "type=exe" >> "$GITHUB_OUTPUT"
+              echo "os=win" >> "$GITHUB_OUTPUT"
+              echo "icon_path=icons/ranger.ico" >> "$GITHUB_OUTPUT"
+              ;;
+            "ubuntu-latest")
+              echo "type=deb" >> "$GITHUB_OUTPUT"
+              echo "os=linux-x64" >> "$GITHUB_OUTPUT"
+              echo "icon_path=src/main/resources/ranger.png" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Make Output File Name
+        run: | 
+          echo \
+          "file_name=preflop-ranger-${{ steps.os-specifics.outputs.os }}-${{ inputs.version }}.${{ steps.os-specifics.outputs.type }}" \
+          >> $GITHUB_ENV
+
+      - name: JPackage
+        env:
+          type: ${{ steps.os-specifics.outputs.type }}
+          icon: ${{ steps.os-specifics.outputs.icon_path }}
+        #need jdk.unsupported due to https://stackoverflow.com/questions/62815536/why-am-i-getting-the-error-noclassdeffounderror-sun-misc-unsafe-when-trying-t
+        run: |
+          jpackage --input target/scala-2.13 --name 'Preflop Ranger' \
+          --main-jar Preflop\ Ranger-assembly-${{ inputs.version }}.jar \
+          --type ${{ env.type }} --app-version ${{ inputs.version }} --add-modules \
+          java.base,java.desktop,jdk.unsupported \
+          --icon ${{ env.icon }}
+
+      - name: Rename File Linux
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          mv preflop-ranger_${{ inputs.version }}_amd64.${{ steps.os-specifics.outputs.type }} \
+          ${{ env.file_name }}
+      - name: Rename File Mac or Windows
+        if: ${{ matrix.os != 'ubuntu-latest' }}
+        run: |
+          mv Preflop\ Ranger-${{ inputs.version }}.${{ steps.os-specifics.outputs.type }} \
+          ${{ env.file_name }} 
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.file_name }}
+          tag_name: v${{ inputs.version }}
+
+  delete-on-fail:
+    name: Delete Tag when Release Fails
+    needs: [ release ]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    if: failure()
+    steps:
+      - name: Delete Tag
+        run: gh release delete v${{ inputs.version }} --cleanup-tag -y --repo jbwheatley/preflop-ranger
