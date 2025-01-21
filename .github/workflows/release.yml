@@ -75,7 +75,7 @@ jobs:
               ;;
             "macos-latest")
               echo "type=dmg" >> "$GITHUB_OUTPUT"
-              echo "os=macos-arm64" >> "GITHUB_OUTPUT"
+              echo "os=macos-arm64" >> "$GITHUB_OUTPUT"
               echo "icon_path=icons/ranger.icns" >> "$GITHUB_OUTPUT"
               ;;
             "windows-latest")
