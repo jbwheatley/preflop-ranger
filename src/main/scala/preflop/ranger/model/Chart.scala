@@ -17,14 +17,16 @@
 
 package preflop.ranger.model
 
+import javafx.beans.binding.Bindings
 import javafx.scene.input.{MouseButton, MouseEvent}
 import preflop.ranger.PreflopRanger
+import preflop.ranger.PreflopRanger.borderInset
 import preflop.ranger.edit.UndoRedo.Change
 import preflop.ranger.edit.{EditRegistry, UndoRedo}
 import preflop.ranger.model.Chart.ChartSquare
 import preflop.ranger.popups.{ChartEditPopup, ChartSquareEditPopup}
 import scalafx.beans.property.{BooleanProperty, ObjectProperty, StringProperty}
-import scalafx.scene.Scene
+import scalafx.geometry.Pos.Center
 import scalafx.scene.control.{ContextMenu, MenuItem, Tooltip}
 import scalafx.scene.layout._
 import scalafx.scene.text.Text
@@ -68,12 +70,21 @@ case class Chart(
       }
     }
 
-  def draw(_scene: Scene): GridPane =
-    new GridPane() {
+//TODO the size of the grid needs to take into consideration both the width and the height of the border pane and choice the smaller of the two
+  def draw(container: BorderPane): GridPane =
+    new GridPane() { grid =>
+      val availableHeight = container.height.subtract(
+        (PreflopRanger.borderInset * 2) + PreflopRanger.chartMenuHeight + PreflopRanger.chartTitleHeight + PreflopRanger.randomiserHeight + (3 * PreflopRanger.boxSpacing)
+      )
+      val availableWidth = container.width.subtract((2 * borderInset) + (2 * PreflopRanger.boxSpacing))
+      val gridDim        = Bindings.min(availableWidth, availableHeight).subtract(6)
+      grid.minWidth.bind(gridDim)
+      grid.maxWidth.bind(gridDim)
       hgap = 0.5
       vgap = 0.5
       snapToPixel = false
-      squares.zipWithIndex.foreach { case (ss, idx) => addRow(idx, ss.map(_.draw(_scene)).toList.map(_.delegate): _*) }
+      alignment = Center
+      squares.zipWithIndex.foreach { case (ss, idx) => addRow(idx, ss.map(_.draw(grid)).toList.map(_.delegate): _*) }
     }
 
   private lazy val df: DecimalFormat = {
@@ -133,8 +144,8 @@ object Chart {
     var init: HandAction = _
     def handActionProperty: ObjectProperty[HandAction]
 
-    def draw(_scene: Scene): StackPane = {
-      def handActionView: StackPane = handActionProperty.get().draw(_scene)
+    def draw(container: GridPane): StackPane = {
+      def handActionView: StackPane = handActionProperty.get().draw(container)
       val p: StackPane = new StackPane { sp =>
         onMouseClicked = (e: MouseEvent) =>
           if (!chart.isPlaceholder && e.getButton == MouseButton.SECONDARY && !PreflopRanger.popupOpen.value) {
@@ -238,7 +249,7 @@ object Chart {
     }
   }
 
-  def default(_scene: Scene): GridPane =
+  def default(container: BorderPane): GridPane =
     Chart(
       "",
       Array.fill(13)(
@@ -248,5 +259,5 @@ object Chart {
       numberOfPlayers = 0,
       isPlaceholder = true
     )
-      .draw(_scene)
+      .draw(container)
 }

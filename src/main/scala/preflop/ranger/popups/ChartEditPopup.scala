@@ -41,6 +41,8 @@ import scalafx.stage.Stage
 class ChartEditPopup(chart: Chart) extends Popup { stage =>
   title = s"Edit - ${chart.name.value}"
   resizable = true
+  height = 600.0
+  width = 450.0
   scene = new PopupScene(chart, stage)
 }
 

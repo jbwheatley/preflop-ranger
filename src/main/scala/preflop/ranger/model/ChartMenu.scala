@@ -18,12 +18,14 @@
 package preflop.ranger.model
 
 import javafx.event.ActionEvent
+import javafx.geometry.Pos
+import javafx.scene.control
 import preflop.ranger.PreflopRanger
 import preflop.ranger.model.ChartMenu.{ChartMenuNode0, Node}
+import scalafx.application.Platform
 import scalafx.geometry.Insets
-import scalafx.scene.control.{Menu, MenuBar, MenuItem}
-import scalafx.scene.layout.Priority.Never
-import scalafx.scene.layout.{Background, BackgroundFill, CornerRadii}
+import scalafx.scene.control.{Menu, MenuBar, MenuItem, Skin}
+import scalafx.scene.layout.{Background, BackgroundFill, BorderPane, CornerRadii}
 import scalafx.scene.paint.Color
 
 import scala.collection.mutable.ArrayBuffer
@@ -32,10 +34,8 @@ case class ChartMenu(children: ArrayBuffer[ChartMenuNode0]) extends Node {
   val depth                   = -1
   val chartOpt: Option[Chart] = None
   val label                   = "Chart Menu"
-  def draw(callback: Chart => Unit): MenuBar = new MenuBar() {
+  def draw(callback: Chart => Unit, container: BorderPane): MenuBar = new MenuBar() {
     style = "-fx-font: normal bold 11pt sans-serif"
-    maxWidth = 450.1 // for some reason menu goes to '...' if exactly 450
-    hgrow = Never
     background = new Background(
       Array(
         new BackgroundFill(
@@ -46,6 +46,20 @@ case class ChartMenu(children: ArrayBuffer[ChartMenuNode0]) extends Node {
       )
     )
 
+    Platform.runLater {
+      skin = {
+        val s: javafx.scene.control.skin.MenuBarSkin = skin.get() match {
+          case s: javafx.scene.control.skin.MenuBarSkin =>
+            s.setContainerAlignment(Pos.CENTER)
+            s
+          case _ => ???
+        }
+        new Skin[javafx.scene.control.MenuBar] {
+          override def delegate: control.Skin[javafx.scene.control.MenuBar] = s
+        }
+      }
+    }
+    prefWidth.bind(container.widthProperty())
     menus = children.map(_.draw(callback))
   }
 

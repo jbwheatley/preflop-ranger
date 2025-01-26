@@ -24,18 +24,17 @@ import preflop.ranger.custom.LeftClickButton
 import preflop.ranger.edit.EditRegistry
 import preflop.ranger.model._
 import preflop.ranger.popups._
-import scalafx.application.JFXApp3
+import scalafx.application.{JFXApp3, Platform}
 import scalafx.beans.property.BooleanProperty
-import scalafx.geometry.Pos.{Center, TopCenter}
+import scalafx.geometry.Pos.{BottomCenter, Center, TopCenter}
 import scalafx.geometry.{Insets, Pos}
 import scalafx.scene.Scene
-import scalafx.scene.control.{ContextMenu, MenuBar, MenuItem, RadioMenuItem}
+import scalafx.scene.control.{ContextMenu, MenuItem, RadioMenuItem}
 import scalafx.scene.layout.Priority.Always
 import scalafx.scene.layout._
 import scalafx.scene.paint._
 import scalafx.scene.shape.Rectangle
 import scalafx.scene.text.Text
-import scalafx.stage.Stage
 
 import java.io.File
 import java.nio.file.{Files, Path, StandardCopyOption, StandardOpenOption}
@@ -45,15 +44,69 @@ object PreflopRanger extends JFXApp3 {
 
   private val debug: Boolean = false
 
-  val borderInset: Double        = 25.0
-  val boxArc: Double             = 8.0
-  private val boxSpacing: Double = 3.0
+  private val minChartSquareWidth: Double = 40.0
+  val borderInset: Double                 = 25.0
+  val chartMenuHeight: Double             = 32.0
+  val chartTitleHeight: Double            = 25.0
+  val randomiserHeight: Double            = 50.0
+  val boxArc: Double                      = 8.0
+  val boxSpacing: Double                  = 3.0
 
   val basePath: Path            = Path.of(System.getProperty("user.home") + File.separator + ".preflop-ranger")
   private val profilePath: Path = basePath.resolve("profiles.json")
 
   var allProfiles: Array[Profile] = _
   var selectedProfile: Data       = _
+
+  override def main(args: Array[String]): Unit = try super.main(args)
+  catch {
+    case e: Throwable =>
+      Files.writeString(
+        basePath.resolve(s"${System.currentTimeMillis() / 1000}.log"),
+        e.toString + "\n  " + e.getStackTrace.map(_.toString).mkString("\n  "),
+        StandardOpenOption.CREATE,
+        StandardOpenOption.WRITE
+      )
+      throw e
+  }
+
+  override def start(): Unit = {
+    load()
+    stage = new JFXApp3.PrimaryStage { selfStage =>
+      title = "Preflop Ranger"
+      minWidth = ((minChartSquareWidth + 0.5) * 13.0) + (borderInset * 2.0)
+      scene = new Scene {
+        stylesheets = List(this.getClass.getResource("/style.css").toExternalForm)
+        fill = Color.rgb(38, 38, 38)
+        root = makeScene()
+      }
+      onCloseRequest = mainCloseRequest => {
+        saveProfiles()
+        if (EditRegistry.hasEdits.value) {
+          new OnCloseUnsavedPopup(mainCloseRequest).showAndWait()
+        }
+      }
+    }
+
+    Platform.runLater {
+      stage.minHeight = stage.height.value
+    }
+
+    if (debug) {
+      val chart = selectedProfile.menu.children.head.children.head.chart.get
+      new ChartEditPopup(chart).show()
+      new ChartSquareEditPopup(chart, chart.squares.head.head).show()
+      new ImportProfilePopup(() => ()).show()
+      new ManageProfilesPopup(() => ()).show()
+      new CreateProfilePopup(() => ()).show()
+      new OnCloseUnsavedPopup(new WindowEvent(stage, WindowEvent.ANY)).show()
+      new SwitchProfileConfirmationPopup(new ToggleGroup(), new RadioMenuItem(""), "").show()
+      new ManageActionsPopup().show()
+      new ExportProfilePopup().show()
+      new AboutPopup().show()
+      new BuyMeACoffeePopup().show()
+    }
+  }
 
   private def load(): Unit =
     if (Files.exists(profilePath)) {
@@ -135,107 +188,62 @@ object PreflopRanger extends JFXApp3 {
 
   val popupOpen: BooleanProperty = BooleanProperty(false)
 
-  def resetStage(): Unit = stage.scene.value.rootProperty().setValue(defaultScene(stage, new Scene(stage.scene.value)))
+  def resetStage(): Unit = stage.scene.value.rootProperty().setValue(makeScene())
 
-  private def defaultScene(selfStage: Stage, selfScene: Scene) = new BorderPane {
-    top = SettingsMenu.draw()
+  private def makeScene() = new BorderPane() {
+    top = SettingsMenu.draw
     background = Background.Empty
-    center = new BorderPane {
+    padding = Insets.Empty
+    center = new BorderPane() {
       borderP =>
-      prefWidth = selfStage.minWidth
-      prefHeight = selfStage.minHeight - 27.5
+      minWidth = ((minChartSquareWidth + 0.5) * 13.0) + (borderInset * 2.0)
+      minHeight = minWidth.value + chartMenuHeight + chartTitleHeight + randomiserHeight + (3 * boxSpacing)
       padding = Insets(borderInset)
-      center = Chart.default(selfScene)
-      top = chartMenuBox(borderP, selfScene)
-      vgrow = Always
-      hgrow = Always
-    }
-  }
-
-  override def main(args: Array[String]): Unit = try super.main(args)
-  catch {
-    case e: Throwable =>
-      Files.writeString(
-        basePath.resolve(s"${System.currentTimeMillis() / 1000}.log"),
-        e.toString + "\n  " + e.getStackTrace.map(_.toString).mkString("\n  "),
-        StandardOpenOption.CREATE,
-        StandardOpenOption.WRITE
-      )
-      throw e
-  }
-
-  override def start(): Unit = {
-    load()
-    stage = new JFXApp3.PrimaryStage { selfStage =>
-      title = "Preflop Ranger"
-      resizable = true
-      scene = new Scene {
-        selfScene =>
-        minWidth = 505
-        minHeight = 650
-        stylesheets = List(this.getClass.getResource("/style.css").toExternalForm)
-        fill = Color.rgb(38, 38, 38)
-        root = defaultScene(selfStage, selfScene)
+      top = chartMenuBar(borderP)
+      center = Chart.default(borderP)
+      bottom = new VBox() { v =>
+        children = List(emptyChartTitleBox(borderP), emptyRandomiserBox(borderP))
+        spacing = boxSpacing
+        padding = Insets(top = boxSpacing, right = 0, bottom = 0, left = 0)
+        alignment = TopCenter
+        alignmentInParent = TopCenter
       }
-      onCloseRequest = mainCloseRequest => {
-        saveProfiles()
-        if (EditRegistry.hasEdits.value) {
-          new OnCloseUnsavedPopup(mainCloseRequest).showAndWait()
-        }
-      }
-    }
-    stage.maxHeightProperty().bind(stage.widthProperty().add(145 + 27.5))
-    stage.minHeightProperty().bind(stage.widthProperty().add(145 + 27.5))
-    stage.sizeToScene()
-
-    if (debug) {
-      val chart = selectedProfile.menu.children.head.children.head.chart.get
-      new ChartEditPopup(chart).show()
-      new ChartSquareEditPopup(chart, chart.squares.head.head).show()
-      new ImportProfilePopup(() => ()).show()
-      new ManageProfilesPopup(() => ()).show()
-      new CreateProfilePopup(() => ()).show()
-      new OnCloseUnsavedPopup(new WindowEvent(stage, WindowEvent.ANY)).show()
-      new SwitchProfileConfirmationPopup(new ToggleGroup(), new RadioMenuItem(""), "").show()
-      new ManageActionsPopup().show()
-      new ExportProfilePopup().show()
-      new AboutPopup().show()
-      new BuyMeACoffeePopup().show()
+      alignmentInParent = Center
     }
   }
 
-  private def menuCallback(border: BorderPane, _scene: Scene): Chart => Unit = { chart =>
-    border.center = new VBox() {
-      children = Array(
-        chart.draw(_scene),
-        chartTitleBox(chart, _scene),
-        randomiserBox(_scene)
-      )
-      alignment = TopCenter
+  private def menuCallback(borderP: BorderPane): Chart => Unit = { chart =>
+    borderP.center = chart.draw(borderP)
+    borderP.bottom = new VBox() {
+      children = List(chartTitleBox(chart, borderP), randomiserBox(borderP))
       spacing = boxSpacing
+      padding = Insets(top = boxSpacing, right = 0, bottom = 0, left = 0)
+      alignment = TopCenter
     }
   }
 
-  private def chartMenuBox(borderP: BorderPane, _scene: Scene): StackPane = new StackPane() {
-    val menu: MenuBar = selectedProfile.menu.draw(
-      menuCallback(borderP, _scene)
-    )
+  private def chartMenuBar(container: BorderPane): StackPane = new StackPane() {
     children = List(
-      new Rectangle() {
-        this.width.bind(_scene.width.subtract(2.0 * borderInset))
-        this.height.bind(menu.height)
-        fill = Color.LightGreen
-        arcWidth = boxArc
-        arcHeight = boxArc
-        hgrow = Always
-      },
-      menu
+      selectedProfile.menu.draw(
+        menuCallback(container),
+        container
+      )
     )
-    alignment = Center
+    alignment = BottomCenter
     padding = Insets(bottom = boxSpacing, top = 0, left = 0, right = 0)
   }
 
-  private def chartTitleBox(chart: Chart, _scene: Scene): StackPane = {
+  private def emptyChartTitleBox(container: BorderPane): Rectangle =
+    new Rectangle() {
+      width.bind(container.widthProperty().subtract(2 * borderInset))
+      fill = Color.LightGreen
+      height = chartTitleHeight
+      arcHeight = boxArc
+      arcWidth = boxArc
+      hgrow = Always
+    }
+
+  private def chartTitleBox(chart: Chart, container: BorderPane): StackPane = {
     def text: String =
       if (SettingsMenu.showPercentages.get())
         s"${chart.name.value} - ${chart.percentagesProperty.get()}"
@@ -267,10 +275,11 @@ object PreflopRanger extends JFXApp3 {
           }.show(sp, e.getScreenX, e.getScreenY)
         }
       children = List(
-        new Rectangle() {
-          this.width.bind(_scene.width.subtract(2 * borderInset))
+        new Rectangle() { r =>
+          width.bind(container.widthProperty().subtract(2 * borderInset))
+          hgrow = Always
           fill = Color.LightGreen
-          height = 25.0
+          height = chartTitleHeight
           arcHeight = boxArc
           arcWidth = boxArc
         },
@@ -279,12 +288,23 @@ object PreflopRanger extends JFXApp3 {
     }
   }
 
-  private def randomiserBox(_scene: Scene): StackPane = new StackPane {
+  private def emptyRandomiserBox(container: BorderPane): Rectangle =
+    new Rectangle() {
+      fill = Color.SkyBlue
+      hgrow = Always
+      width.bind(container.widthProperty().subtract(2 * borderInset))
+      height = randomiserHeight
+      arcHeight = boxArc
+      arcWidth = boxArc
+    }
+
+  private def randomiserBox(container: BorderPane): StackPane = new StackPane {
     children = List(
       new Rectangle() {
         fill = Color.SkyBlue
-        this.width.bind(_scene.width.subtract(2 * borderInset))
-        height = 50.0
+        hgrow = Always
+        width.bind(container.widthProperty().subtract(2 * borderInset))
+        height = randomiserHeight
         arcHeight = boxArc
         arcWidth = boxArc
       }, {

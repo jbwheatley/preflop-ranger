@@ -168,7 +168,7 @@ object SettingsMenu {
       )
   }
 
-  def draw(): MenuBar = new MenuBar {
+  lazy val draw: MenuBar = new MenuBar {
     menus = List(
       new Menu(
         "",
@@ -246,7 +246,7 @@ object SettingsMenu {
             private var undoRedoAction = false
 
             private val radioItems: Array[RadioMenuItem] = Array(
-//              new RadioMenuItem("2"), //TODO support heads up
+              new RadioMenuItem("2"), // TODO support heads up
               new RadioMenuItem("3"),
               new RadioMenuItem("4"),
               new RadioMenuItem("5"),
@@ -258,7 +258,7 @@ object SettingsMenu {
             private val toggles: ToggleGroup = new ToggleGroup() {
               this.toggles = radioItems
             }
-            toggles.selectToggle(radioItems(noOfPlayers.value - 3))
+            toggles.selectToggle(radioItems(noOfPlayers.value - radioItems.minBy(_.getText.toInt).getText.toInt))
             toggles.selectedToggle.onChange { (_, old, selected) =>
               val change = () => {
                 undoRedoAction = true
@@ -272,7 +272,8 @@ object SettingsMenu {
               }
               // don't add change to the redo stack if we're acting inside the undo/redo action
               if (!undoRedoAction) UndoRedo.add(Change(change, undo, "Players"))
-              noOfPlayers.value = radioItems.indexWhere(_.delegate == selected) + 3
+              noOfPlayers.value =
+                radioItems.indexWhere(_.delegate == selected) + radioItems.minBy(_.getText.toInt).getText.toInt
               if (noOfPlayers.value != noOfPlayersInit) EditRegistry.register("noOfPlayers")
               else EditRegistry.deregister("noOfPlayers")
             }

@@ -31,7 +31,7 @@ class AboutPopup extends Popup {
   grid.addRow(
     1,
     new Text("Version:"),
-    new Text(new String(PreflopRanger.getClass.getResource("/version").openStream().readAllBytes()))
+    new Text(new String(PreflopRanger.getClass.getResource("/version").openStream().readAllBytes()).trim)
   )
   grid.addRow(
     2,

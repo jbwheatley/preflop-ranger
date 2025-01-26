@@ -9,7 +9,7 @@ inThisBuild(
     developers := List(
       Developer(
         "jbwheatley",
-        " ",
+        "",
         "jbwheatley@proton.me",
         url("https://github.com/jbwheatley")
       )

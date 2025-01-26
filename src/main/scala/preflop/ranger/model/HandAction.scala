@@ -17,11 +17,10 @@
 
 package preflop.ranger.model
 
-import preflop.ranger.PreflopRanger
+import javafx.beans.binding.Bindings
 import scalafx.geometry.Pos.TopRight
-import scalafx.scene.Scene
 import scalafx.scene.layout.Priority.Always
-import scalafx.scene.layout.StackPane
+import scalafx.scene.layout.{GridPane, StackPane}
 import scalafx.scene.paint.Color
 import scalafx.scene.shape.Rectangle
 
@@ -45,34 +44,33 @@ final case class HandAction(r: Int, j: Int, c: Int, l: Int, f: Int, n: Int, vari
       _fill: Color,
       base: Rectangle
   ): Rectangle = {
-    val centile            = base.widthProperty().divide(100.0)
-    val rectRelativeHeight = base.heightProperty()
-    val rectRelativeWidth  = centile.multiply(100.0 - percentageFrom)
+    val rectRelativeHeight = base.width
+    // make sure its always a whole number of pixels
+    val rectRelativeWidth =
+      Bindings.createLongBinding(() => Math.round(base.getWidth * (1.0 - (percentageFrom / 100.0))), base.width)
     val r = new Rectangle() {
       fill = _fill
+      opacity = 1.0
       hgrow = Always
       vgrow = Always
-      width = rectRelativeWidth.get()
-      height = rectRelativeHeight.get()
+      width.bind(rectRelativeWidth)
+      height.bind(rectRelativeHeight)
     }
     SettingsMenu.actions.onChange { (_, _, change) =>
       change.get(id).foreach(d => r.fill = d.colour)
     }
-    r.widthProperty().bind(rectRelativeWidth)
-    r.heightProperty().bind(rectRelativeHeight)
     r
   }
 
-  def draw(scene: Scene): StackPane = {
-    val sceneWidth = scene.width
-      .subtract(2 * PreflopRanger.borderInset)
+  def draw(container: GridPane): StackPane = {
+    val containerWidth = container.width
       .divide(13.0)
       .subtract(0.5)
     val baseRect = new Rectangle() {
       hgrow = Always
       vgrow = Always
-      this.width.bind(sceneWidth)
-      this.height.bind(sceneWidth)
+      this.width.bind(containerWidth)
+      this.height.bind(containerWidth)
       fill = SettingsMenu.actions.get()("n").colour
     }
     val all: List[(String, Int)] = List("r" -> r) ++ variableRaiseSizes
