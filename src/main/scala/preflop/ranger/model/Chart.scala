@@ -232,12 +232,15 @@ object Chart {
         }
       val ha = handActionProperty.get()
       import ha._
-      val all: List[(String, Int)] = List("Raise" -> r) ++ variableRaiseSizes
-        .map { case (k, v) => s"Raise (${k}x)" -> v }
-        .map { case (k, v) => k -> v } ++ List("Jam" -> j, "Call" -> c, "Limp" -> l, "Fold" -> f, "Fold" -> n)
-      val countedInSum = if (!chart.subset) all else all.init // exclude no action
-      val random       = Random.nextInt(countedInSum.map(_._2).sum) + 1
-      loop(0, all, random)
+      if (ha.n == 100) ""
+      else {
+        val all: List[(String, Int)] = List("Raise" -> r) ++ variableRaiseSizes
+          .map { case (k, v) => s"Raise (${k}x)" -> v }
+          .map { case (k, v) => k -> v } ++ List("Jam" -> j, "Call" -> c, "Limp" -> l, "Fold" -> f, "Fold" -> n)
+        val countedInSum = if (!chart.subset) all else all.init // exclude no action
+        val random       = Random.nextInt(countedInSum.map(_._2).sum) + 1
+        loop(0, all, random)
+      }
     }
 
     def save(): Unit =
