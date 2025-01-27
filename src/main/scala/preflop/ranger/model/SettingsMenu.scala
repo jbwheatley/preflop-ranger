@@ -17,27 +17,27 @@
 
 package preflop.ranger.model
 
-import preflop.ranger.PreflopRanger
-import preflop.ranger.PreflopRanger.allProfiles
-import preflop.ranger.edit.UndoRedo.Change
+import javafx.beans.value.ObservableValue
+import javafx.scene.control
+import preflop.ranger.PreflopRanger.{allProfiles, resetStage}
+import preflop.ranger.edit.RangerFiles.{loadProfile, saveSelectedProfile}
+import preflop.ranger.custom.{DisappearingMenuItem, SelectMenuItem}
 import preflop.ranger.edit.{EditRegistry, UndoRedo}
 import preflop.ranger.model.FileData.ActionData
 import preflop.ranger.popups._
-import scalafx.beans.property.{BooleanProperty, IntegerProperty, ObjectProperty}
-import scalafx.event.subscriptions.Subscription
+import scalafx.beans.property._
 import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
-import scalafx.scene.input.{KeyCharacterCombination, KeyCombination}
+
+import java.lang
 
 object SettingsMenu {
 
-  var showPercentagesInit: Boolean         = _
-  var noOfPlayersInit: Int                 = _
   var actionsInit: Map[String, ActionData] = _
 
-  val showPercentages: BooleanProperty                 = BooleanProperty(true)
-  val noOfPlayers: IntegerProperty                     = IntegerProperty(0)
-  val actions: ObjectProperty[Map[String, ActionData]] = ObjectProperty(Map.empty[String, ActionData])
+  var showPercentages: BooleanProperty                 = _
+  var noOfPlayers: IntegerProperty                     = _
+  var actions: ObjectProperty[Map[String, ActionData]] = _
 
   def variableRaiseSizes: Array[String] = actions.getValue.view
     .filterKeys(_.toDoubleOption.isDefined)
@@ -46,64 +46,27 @@ object SettingsMenu {
     .sorted
 
   def save(): Unit = {
-    showPercentagesInit = showPercentages.value
-    noOfPlayersInit = noOfPlayers.value
+    showPercentagesMenuItem.save()
+    noOfPlayersMenu.save()
     actionsInit = actions.value
   }
 
-  private class DisappearingMenuItem(
-      name: String,
-      show: BooleanProperty,
-      shortcutKey: Char,
-      shift: Boolean,
-      parent: Menu,
-      idxInParent: Int,
-      action: => Unit,
-      conditionalNameUpdate: MenuItem => Subscription = _ => () => ()
-  ) extends MenuItem { self =>
-    conditionalNameUpdate(self)
-    text = name
-    show.onChange {
-      parent.items(idxInParent) = new DisappearingMenuItem(
-        self.text.get(),
-        show,
-        shortcutKey,
-        shift,
-        parent,
-        idxInParent,
-        action,
-        conditionalNameUpdate
-      )
-    }
-    if (!show.get()) styleClass.addOne("nohover")
-    onAction = _ => action
-    style = if (show.get()) "-fx-text-color: black;" else "-fx-text-fill: lightgray;"
-    private val modifiers: List[KeyCombination.Modifier] =
-      if (shift) List(KeyCombination.ShortcutDown, KeyCombination.ShiftDown) else List(KeyCombination.ShortcutDown)
-    accelerator = new KeyCharacterCombination(shortcutKey.toString, modifiers.map(_.delegate): _*)
-  }
-
-  private var switching: Boolean = false
-
   def switchProfile(selected: String): Unit = {
     UndoRedo.reset()
-    PreflopRanger.loadProfile(selected)
-    PreflopRanger.resetStage()
+    loadProfile(selected, startup = false)
+    resetStage()
   }
 
-  private def switchProfile(
+  private def selectProfile(
       toggles: javafx.scene.control.ToggleGroup,
       old: javafx.scene.control.Toggle,
       selected: String
-  ): Unit = if (!switching) {
-    switching = true
+  ): Unit =
     if (EditRegistry.hasEdits.value) {
       new SwitchProfileConfirmationPopup(toggles, old, selected).showAndWait()
     } else {
       switchProfile(selected)
     }
-    switching = false
-  }
 
   private def profilesMenu(parent: Menu): Menu = new Menu("Profiles") { self =>
     private val radioItems: List[RadioMenuItem] = allProfiles.map { p =>
@@ -114,7 +77,7 @@ object SettingsMenu {
     }
     toggles.selectToggle(radioItems(allProfiles.indexWhere(_.selected, 0)))
     toggles.selectedToggle.onChange((_, old, selected) =>
-      switchProfile(toggles, old, selected.asInstanceOf[javafx.scene.control.RadioMenuItem].getText)
+      selectProfile(toggles, old, selected.asInstanceOf[javafx.scene.control.RadioMenuItem].getText)
     )
 
     items = radioItems
@@ -168,6 +131,64 @@ object SettingsMenu {
       )
   }
 
+  lazy val showPercentagesMenuItem
+      : CheckMenuItem with SelectMenuItem[CheckMenuItem, Boolean, lang.Boolean, Boolean, lang.Boolean] =
+    new CheckMenuItem("Show percentages")
+      with SelectMenuItem[CheckMenuItem, Boolean, lang.Boolean, Boolean, lang.Boolean] {
+      override def memoryValue: Property[Boolean, lang.Boolean] = showPercentages
+
+      override def changeValue: lang.Boolean => Unit = this.selected = _
+
+      override def selectionProperty: CheckMenuItem => Property[Boolean, lang.Boolean] = _.selected
+
+      override def changeActionName: lang.Boolean => String = if (_) "Show %" else "Hide %"
+
+      override def editRegistryName: String = "showPercentages"
+
+      override def initialiseProperty: Boolean => Unit = show => this.selected = show
+
+      override def bindingFunction: ReadOnlyProperty[Boolean, lang.Boolean] => ObservableValue[lang.Boolean] = x => x
+    }
+
+  lazy val noOfPlayersMenu: Menu with SelectMenuItem[Menu, Int, Number, control.Toggle, control.Toggle] = {
+    val radioItems: Array[RadioMenuItem] = Array(
+      new RadioMenuItem("2"),
+      new RadioMenuItem("3"),
+      new RadioMenuItem("4"),
+      new RadioMenuItem("5"),
+      new RadioMenuItem("6"),
+      new RadioMenuItem("7"),
+      new RadioMenuItem("8"),
+      new RadioMenuItem("9")
+    )
+    val toggles: ToggleGroup = new ToggleGroup() {
+      this.toggles = radioItems
+    }
+    new Menu("No. of players") with SelectMenuItem[Menu, Int, Number, control.Toggle, control.Toggle] {
+
+      override def memoryValue: Property[Int, Number] = noOfPlayers
+
+      override def initialise: () => Unit = () => items = radioItems
+
+      override def changeValue: control.Toggle => Unit = tog => toggles.selectToggle(tog)
+
+      override def selectionProperty: Menu => ReadOnlyProperty[control.Toggle, control.Toggle] =
+        _ => toggles.selectedToggle
+
+      override def bindingFunction: ReadOnlyProperty[control.Toggle, control.Toggle] => ObservableValue[Number] =
+        _.map(selected =>
+          radioItems.indexWhere(_.delegate == selected) + radioItems.minBy(_.getText.toInt).getText.toInt
+        )
+
+      override def changeActionName: control.Toggle => String = _ => "Players"
+
+      override val editRegistryName: String = "noOfPlayers"
+
+      override def initialiseProperty: Int => Unit =
+        noOfPlayers => toggles.selectToggle(radioItems(noOfPlayers - radioItems.minBy(_.getText.toInt).getText.toInt))
+    }
+  }
+
   lazy val draw: MenuBar = new MenuBar {
     menus = List(
       new Menu(
@@ -194,7 +215,7 @@ object SettingsMenu {
       },
       new Menu("File") { self =>
         items = List(
-          new DisappearingMenuItem("Save", show = EditRegistry.hasEdits, 's', false, self, 0, PreflopRanger.saveData()),
+          new DisappearingMenuItem("Save", show = EditRegistry.hasEdits, 's', false, self, 0, saveSelectedProfile()),
           profilesMenu(self)
         )
       },
@@ -218,67 +239,8 @@ object SettingsMenu {
       },
       new Menu("View") {
         items = List(
-          new CheckMenuItem("Show percentages") {
-            private var undoRedoAction = false
-
-            selected = showPercentages.value
-            showPercentages.bind(selected)
-            selected.onChange { (_, _, select) =>
-              val change = () => {
-                undoRedoAction = true
-                selected = select
-                undoRedoAction = false
-              }
-              val undo = () => {
-                undoRedoAction = true
-                selected = !select
-                undoRedoAction = false
-              }
-              if (!undoRedoAction) {
-                val desc = if (select) "Show %" else "Hide %"
-                UndoRedo.add(Change(change, undo, desc))
-              }
-              if (showPercentages.value != showPercentagesInit) EditRegistry.register("showPercentages")
-              else EditRegistry.deregister("showPercentages")
-            }
-          },
-          new Menu("No. of players") {
-            private var undoRedoAction = false
-
-            private val radioItems: Array[RadioMenuItem] = Array(
-              new RadioMenuItem("2"), // TODO support heads up
-              new RadioMenuItem("3"),
-              new RadioMenuItem("4"),
-              new RadioMenuItem("5"),
-              new RadioMenuItem("6"),
-              new RadioMenuItem("7"),
-              new RadioMenuItem("8"),
-              new RadioMenuItem("9")
-            )
-            private val toggles: ToggleGroup = new ToggleGroup() {
-              this.toggles = radioItems
-            }
-            toggles.selectToggle(radioItems(noOfPlayers.value - radioItems.minBy(_.getText.toInt).getText.toInt))
-            toggles.selectedToggle.onChange { (_, old, selected) =>
-              val change = () => {
-                undoRedoAction = true
-                toggles.selectToggle(selected)
-                undoRedoAction = false
-              }
-              val undo = () => {
-                undoRedoAction = true
-                toggles.selectToggle(old)
-                undoRedoAction = false
-              }
-              // don't add change to the redo stack if we're acting inside the undo/redo action
-              if (!undoRedoAction) UndoRedo.add(Change(change, undo, "Players"))
-              noOfPlayers.value =
-                radioItems.indexWhere(_.delegate == selected) + radioItems.minBy(_.getText.toInt).getText.toInt
-              if (noOfPlayers.value != noOfPlayersInit) EditRegistry.register("noOfPlayers")
-              else EditRegistry.deregister("noOfPlayers")
-            }
-            items = radioItems
-          }
+          showPercentagesMenuItem,
+          noOfPlayersMenu
         )
       }
     )

@@ -18,7 +18,7 @@
 package preflop.ranger.popups
 
 import preflop.ranger.PreflopRanger
-import preflop.ranger.PreflopRanger.{basePath, saveProfiles}
+import preflop.ranger.edit.RangerFiles.{saveProfile, saveProfileList}
 import preflop.ranger.custom.Bindings.matches
 import preflop.ranger.custom.Tooltips.showTooltip
 import preflop.ranger.custom.{ButtonHBox, LeftClickButton, Popup}
@@ -32,7 +32,7 @@ import scalafx.scene.text.Text
 import scalafx.stage.FileChooser
 import scalafx.stage.FileChooser.ExtensionFilter
 
-import java.nio.file.{Files, StandardOpenOption}
+import java.nio.file.Files
 import scala.util.{Failure, Success, Try}
 
 class ImportProfilePopup(refreshProfileMenu: () => Unit) extends Popup { self =>
@@ -96,17 +96,11 @@ class ImportProfilePopup(refreshProfileMenu: () => Unit) extends Popup { self =>
                         fill = Color.Red
                       }
                     )
-                  case Success(_) =>
-                    Files.writeString(
-                      basePath.resolve(s"profiles/${newName.replaceAll(" ", "_")}.json"),
-                      textBox.text.value,
-                      StandardOpenOption.CREATE,
-                      StandardOpenOption.WRITE,
-                      StandardOpenOption.TRUNCATE_EXISTING
-                    )
+                  case Success(fd) =>
+                    saveProfile(newName, fd)
                     PreflopRanger.allProfiles =
                       PreflopRanger.allProfiles.appended(Profile(newName, selected = false)).sortBy(_.name)
-                    saveProfiles()
+                    saveProfileList()
                     refreshProfileMenu()
                     close()
                 }

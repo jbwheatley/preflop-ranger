@@ -47,16 +47,13 @@ case class ChartMenu(children: ArrayBuffer[ChartMenuNode0]) extends Node {
     )
 
     Platform.runLater {
-      skin = {
-        val s: javafx.scene.control.skin.MenuBarSkin = skin.get() match {
-          case s: javafx.scene.control.skin.MenuBarSkin =>
-            s.setContainerAlignment(Pos.CENTER)
-            s
-          case _ => ???
-        }
-        new Skin[javafx.scene.control.MenuBar] {
-          override def delegate: control.Skin[javafx.scene.control.MenuBar] = s
-        }
+      skin.get() match {
+        case s: javafx.scene.control.skin.MenuBarSkin =>
+          s.setContainerAlignment(Pos.CENTER)
+          skin = new Skin[javafx.scene.control.MenuBar] {
+            override def delegate: control.Skin[javafx.scene.control.MenuBar] = s
+          }
+        case _ => ()
       }
     }
     prefWidth.bind(container.widthProperty())

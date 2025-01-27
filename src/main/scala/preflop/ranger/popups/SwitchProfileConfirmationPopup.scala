@@ -17,9 +17,11 @@
 
 package preflop.ranger.popups
 
-import preflop.ranger.PreflopRanger
+import preflop.ranger.PreflopRanger.resetStage
+import preflop.ranger.edit.RangerFiles.{loadProfile, saveSelectedProfile}
 import preflop.ranger.custom.{ButtonHBox, LeftClickButton, Popup}
 import preflop.ranger.edit.UndoRedo
+import preflop.ranger.model.SettingsMenu.switchProfile
 import scalafx.geometry.Insets
 import scalafx.scene.Scene
 import scalafx.scene.layout.{Background, BorderPane}
@@ -52,17 +54,15 @@ class SwitchProfileConfirmationPopup(
           new LeftClickButton("Discard") {
             override def onLeftClick(): Unit = {
               UndoRedo.reset()
-              PreflopRanger.loadProfile(selected)
-              PreflopRanger.resetStage()
+              loadProfile(selected, startup = false)
+              resetStage()
               close()
             }
           },
           new LeftClickButton("Save and Switch") {
             override def onLeftClick(): Unit = {
-              PreflopRanger.saveData()
-              UndoRedo.reset()
-              PreflopRanger.loadProfile(selected)
-              PreflopRanger.resetStage()
+              saveSelectedProfile()
+              switchProfile(selected)
               close()
             }
           }

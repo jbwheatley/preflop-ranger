@@ -20,7 +20,7 @@ package preflop.ranger.popups
 import javafx.scene.input.MouseButton
 import javafx.scene.layout
 import preflop.ranger.PreflopRanger
-import preflop.ranger.PreflopRanger.basePath
+import preflop.ranger.edit.RangerFiles.{basePath, saveProfileList}
 import preflop.ranger.custom.Tooltips.showTooltip
 import preflop.ranger.custom.{ButtonHBox, LeftClickButton, Popup, RectangleStack}
 import preflop.ranger.model.Profile
@@ -84,7 +84,7 @@ class ManageProfilesPopup(refreshProfileMenu: () => Unit) extends Popup {
               if (newNames.distinct == newNames) {
                 deleteProfiles()
                 renameProfiles()
-                PreflopRanger.saveProfiles()
+                saveProfileList()
                 refreshProfileMenu()
                 close()
               } else {

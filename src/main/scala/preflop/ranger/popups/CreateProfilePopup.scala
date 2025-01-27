@@ -17,12 +17,13 @@
 
 package preflop.ranger.popups
 
-import preflop.ranger.PreflopRanger
-import preflop.ranger.PreflopRanger.{basePath, saveProfiles}
+import preflop.ranger.edit.RangerFiles.{saveProfile, saveProfileList}
 import preflop.ranger.custom.Bindings.matches
 import preflop.ranger.custom.Tooltips.showTooltip
 import preflop.ranger.custom.{ButtonHBox, LeftClickButton, Popup}
 import preflop.ranger.model.{FileData, Profile}
+import preflop.ranger.PreflopRanger
+import preflop.ranger.edit.RangerFiles
 import scalafx.collections.ObservableBuffer
 import scalafx.geometry.Insets
 import scalafx.scene.Scene
@@ -31,7 +32,7 @@ import scalafx.scene.layout.{Background, BorderPane, GridPane}
 import scalafx.scene.paint.Color
 import scalafx.scene.text.Text
 
-import java.nio.file.{Files, Path, StandardOpenOption}
+import java.nio.file.{Files, Path}
 
 class CreateProfilePopup(refreshProfileMenu: () => Unit) extends Popup { stage =>
   title = "Create Profile"
@@ -41,7 +42,7 @@ class CreateProfilePopup(refreshProfileMenu: () => Unit) extends Popup { stage =
       private val seedProfile: ChoiceBox[String] =
         new ChoiceBox[String](new ObservableBuffer[String]().addAll("" +: PreflopRanger.allProfiles.map(_.name)))
       private val noOfPlayers: ChoiceBox[Int] =
-        new ChoiceBox[Int](new ObservableBuffer[Int]().addAll(List(3, 4, 5, 6, 7, 8, 9)))
+        new ChoiceBox[Int](new ObservableBuffer[Int]().addAll(List(2, 3, 4, 5, 6, 7, 8, 9)))
       background = Background.fill(Color.White)
       padding = Insets(20)
       center = {
@@ -70,24 +71,14 @@ class CreateProfilePopup(refreshProfileMenu: () => Unit) extends Popup { stage =
                   if (seedProfile.value.value == "") {
                     upickle.default.read[FileData](Files.readString(Path.of("src/main/resources/default.json")))
                   } else
-                    upickle.default.read[FileData](
-                      Files.readString(
-                        basePath.resolve(s"profiles/${seedProfile.value.value.replaceAll(" ", "_")}.json")
-                      )
-                    )
-                Files.writeString(
-                  basePath.resolve(s"profiles/${textField.text.get().replaceAll(" ", "_")}.json"),
-                  upickle.default.write[FileData](
-                    profileToWrite.copy(
-                      settings = profileToWrite.settings.copy(defaultPlayers = noOfPlayers.value.value)
-                    ),
-                    indent = 2
-                  ),
-                  StandardOpenOption.CREATE,
-                  StandardOpenOption.WRITE,
-                  StandardOpenOption.TRUNCATE_EXISTING
+                    RangerFiles.readProfile(seedProfile.value.value)
+                saveProfile(
+                  textField.text.get(),
+                  profileToWrite.copy(
+                    settings = profileToWrite.settings.copy(defaultPlayers = noOfPlayers.value.value)
+                  )
                 )
-                saveProfiles()
+                saveProfileList()
                 refreshProfileMenu()
                 close()
               }

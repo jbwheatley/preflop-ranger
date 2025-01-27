@@ -40,12 +40,12 @@ class ChartSquareEditPopup(chart: Chart, square: ChartSquare) extends Popup { st
 object ChartSquareEditPopup {
   class PopupScene(chart: Chart, square: ChartSquare, popupStage: Stage) extends Scene {
     private lazy val next: ChartSquare =
-      if (square.j < 12) chart.squares(square.i)(square.j + 1)
-      else if (square.i < 12) chart.squares(square.i + 1)(0)
+      if (square.y < 12) chart.squares(square.x)(square.y + 1)
+      else if (square.x < 12) chart.squares(square.x + 1)(0)
       else chart.squares(0)(0)
     private lazy val previous: ChartSquare =
-      if (square.j > 0) chart.squares(square.i)(square.j - 1)
-      else if (square.i > 0) chart.squares(square.i - 1)(12)
+      if (square.y > 0) chart.squares(square.x)(square.y - 1)
+      else if (square.x > 0) chart.squares(square.x - 1)(12)
       else chart.squares(12)(12)
 
     val grid = new GridPane(4, 4)

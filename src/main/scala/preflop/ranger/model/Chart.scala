@@ -23,7 +23,7 @@ import preflop.ranger.PreflopRanger
 import preflop.ranger.PreflopRanger.borderInset
 import preflop.ranger.edit.UndoRedo.Change
 import preflop.ranger.edit.{EditRegistry, UndoRedo}
-import preflop.ranger.model.Chart.ChartSquare
+import preflop.ranger.model.Chart.{ChartSquare, df}
 import preflop.ranger.popups.{ChartEditPopup, ChartSquareEditPopup}
 import scalafx.beans.property.{BooleanProperty, ObjectProperty, StringProperty}
 import scalafx.geometry.Pos.Center
@@ -33,6 +33,8 @@ import scalafx.scene.text.Text
 
 import java.math.RoundingMode
 import java.text.DecimalFormat
+import scala.annotation.tailrec
+import scala.util.Random
 
 case class Chart(
     name: StringProperty,
@@ -70,7 +72,6 @@ case class Chart(
       }
     }
 
-//TODO the size of the grid needs to take into consideration both the width and the height of the border pane and choice the smaller of the two
   def draw(container: BorderPane): GridPane =
     new GridPane() { grid =>
       val availableHeight = container.height.subtract(
@@ -86,12 +87,6 @@ case class Chart(
       alignment = Center
       squares.zipWithIndex.foreach { case (ss, idx) => addRow(idx, ss.map(_.draw(grid)).toList.map(_.delegate): _*) }
     }
-
-  private lazy val df: DecimalFormat = {
-    val d = new DecimalFormat("#.#")
-    d.setRoundingMode(RoundingMode.UP)
-    d
-  }
 
   def save(): Unit = {
     initName = name.value
@@ -125,6 +120,12 @@ case class Chart(
 }
 
 object Chart {
+  lazy val df: DecimalFormat = {
+    val d = new DecimalFormat("#.#")
+    d.setRoundingMode(RoundingMode.UP)
+    d
+  }
+
   def apply(
       name: String,
       actions: Array[Array[HandAction]],
@@ -139,8 +140,7 @@ object Chart {
     numberOfPlayers
   )
 
-  // TODO add on click randomise
-  abstract case class ChartSquare(chart: Chart, hand: String, i: Int, j: Int) { self =>
+  abstract case class ChartSquare(chart: Chart, hand: String, x: Int, y: Int) { self =>
     var init: HandAction = _
     def handActionProperty: ObjectProperty[HandAction]
 
@@ -148,23 +148,30 @@ object Chart {
       def handActionView: StackPane = handActionProperty.get().draw(container)
       val p: StackPane = new StackPane { sp =>
         onMouseClicked = (e: MouseEvent) =>
-          if (!chart.isPlaceholder && e.getButton == MouseButton.SECONDARY && !PreflopRanger.popupOpen.value) {
-            new ContextMenu(
-              new MenuItem("Edit") {
-                onAction = _ => {
-                  PreflopRanger.popupOpen.value = true
-                  new ChartSquareEditPopup(chart, self).show()
+          if (!chart.isPlaceholder && !PreflopRanger.popupOpen.value) {
+            if (e.getButton == MouseButton.SECONDARY) {
+              new ContextMenu(
+                new MenuItem("Edit") {
+                  onAction = _ => {
+                    PreflopRanger.popupOpen.value = true
+                    new ChartSquareEditPopup(chart, self).show()
+                  }
+                },
+                new MenuItem("Edit All") {
+                  onAction = _ => {
+                    PreflopRanger.popupOpen.value = true
+                    new ChartEditPopup(chart).show()
+                  }
                 }
-              },
-              new MenuItem("Edit All") {
-                onAction = _ => {
-                  PreflopRanger.popupOpen.value = true
-                  new ChartEditPopup(chart).show()
-                }
-              }
-            ) { self =>
-              onMouseExited = _ => self.hide()
-            }.show(sp, e.getScreenX, e.getScreenY)
+              ) {
+                self =>
+                onMouseExited = _ => self.hide()
+              }.show(sp, e.getScreenX, e.getScreenY)
+            } else if (e.getButton == MouseButton.PRIMARY) {
+              val randomAction = randomise()
+              if (randomAction.nonEmpty)
+                PreflopRanger.randomiserText.text = s"$hand - $randomAction"
+            }
           }
         centerShape = true
         children = Array(
@@ -174,14 +181,15 @@ object Chart {
       }
 
       def tooltipText(ha: HandAction): String = {
-        val r = if (ha.r > 0) Some(s"Raise: ${ha.r}%") else None
+        val ratio: Double = if (!chart.subset) 100.0 else (100.0 - ha.n) / 100
+        val r             = if (ha.r > 0) Some(s"Raise: ${df.format(ha.r.toDouble / ratio)}%") else None
         val vari = ha.variableRaiseSizes.map { case (s, i) =>
-          if (i > 0) Some(s"Raise (${s}x): $i%") else None
+          if (i > 0) Some(s"Raise (${s}x): ${df.format(i.toDouble / ratio)}%") else None
         }.toList
-        val j = if (ha.j > 0) Some(s"Jam: ${ha.j}%") else None
-        val c = if (ha.c > 0) Some(s"Call: ${ha.c}%") else None
-        val l = if (ha.l > 0) Some(s"Limp: ${ha.l}%") else None
-        val f = if (ha.f > 0) Some(s"Fold: ${ha.f}%") else None
+        val j = if (ha.j > 0) Some(s"Jam: ${df.format(ha.j.toDouble / ratio)}%") else None
+        val c = if (ha.c > 0) Some(s"Call: ${df.format(ha.c.toDouble / ratio)}%") else None
+        val l = if (ha.l > 0) Some(s"Limp: ${df.format(ha.l.toDouble / ratio)}%") else None
+        val f = if (ha.f > 0) Some(s"Fold: ${df.format(ha.f.toDouble / ratio)}%") else None
         (r :: vari ::: List(j, c, l, f)).flatten.mkString("\n")
       }
 
@@ -215,6 +223,23 @@ object Chart {
       p
     }
 
+    private def randomise(): String = {
+      @tailrec
+      def loop(acc: Int, rem: List[(String, Int)], target: Int): String =
+        rem match {
+          case (name, pc) :: rest => if (acc + pc >= target) name else loop(acc + pc, rest, target)
+          case Nil                => ""
+        }
+      val ha = handActionProperty.get()
+      import ha._
+      val all: List[(String, Int)] = List("Raise" -> r) ++ variableRaiseSizes
+        .map { case (k, v) => s"Raise (${k}x)" -> v }
+        .map { case (k, v) => k -> v } ++ List("Jam" -> j, "Call" -> c, "Limp" -> l, "Fold" -> f, "Fold" -> n)
+      val countedInSum = if (!chart.subset) all else all.init // exclude no action
+      val random       = Random.nextInt(countedInSum.map(_._2).sum) + 1
+      loop(0, all, random)
+    }
+
     def save(): Unit =
       init = handActionProperty.value
 
@@ -224,7 +249,7 @@ object Chart {
       if (newAction != current) {
         if (newAction != init) EditRegistry.register(self) else EditRegistry.deregister(self)
         handActionProperty.value = newAction
-        chart.actions(i)(j) = newAction
+        chart.actions(x)(y) = newAction
       }
     }
 
@@ -234,13 +259,13 @@ object Chart {
         val update = () => {
           if (newAction != init) EditRegistry.register(self) else EditRegistry.deregister(self)
           handActionProperty.value = newAction
-          chart.actions(i)(j) = newAction
+          chart.actions(x)(y) = newAction
           chart.recalcPercentages()
         }
         val inverse = () => {
           if (current != init) EditRegistry.register(self) else EditRegistry.deregister(self)
           handActionProperty.value = current
-          chart.actions(i)(j) = current
+          chart.actions(x)(y) = current
           chart.recalcPercentages()
         }
         UndoRedo.add(Change(update, inverse, s"Update $hand"))

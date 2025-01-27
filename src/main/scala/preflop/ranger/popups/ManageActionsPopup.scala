@@ -251,7 +251,7 @@ class ManageActionsPopup extends Popup { popup =>
         SettingsMenu.actions.update(current)
         PreflopRanger.selectedProfile.charts.foreach { c =>
           c.squares.foreach(_.foreach { sq =>
-            val oldAction = copyOfCurrentHandActions(c)(sq.i)(sq.j)
+            val oldAction = copyOfCurrentHandActions(c)(sq.x)(sq.y)
             sq.massUpdate(_ => oldAction)
           })
         }

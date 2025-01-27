@@ -17,7 +17,7 @@
 
 package preflop.ranger.popups
 
-import preflop.ranger.PreflopRanger.saveData
+import preflop.ranger.edit.RangerFiles.saveSelectedProfile
 import preflop.ranger.custom.{ButtonHBox, LeftClickButton, Popup}
 import scalafx.geometry.Insets
 import scalafx.scene.Scene
@@ -49,7 +49,7 @@ class OnCloseUnsavedPopup(closeRequest: javafx.stage.WindowEvent) extends Popup 
           },
           new LeftClickButton("Save and Quit") {
             override def onLeftClick(): Unit = {
-              saveData()
+              saveSelectedProfile()
               close()
             }
           }
