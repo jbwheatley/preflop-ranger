@@ -6,7 +6,7 @@ const config = {
   favicon: 'img/favicon.ico',
 
   url: 'https://jbhweatley.github.io',
-  // change to / for local dev
+  // change to / for local dev (cd website; npm start)
   baseUrl: '/preflop-ranger/',
   organizationName: 'io.github.jbwheatley',
   projectName: 'preflop-ranger',
@@ -44,12 +44,13 @@ const config = {
     ],
   ],
 
-  scripts: ['https://buttons.github.io/buttons.js'],
-
 
   themeConfig:
     ({
-      image: 'img/bugcatcher.png',
+      image: 'img/ranger.png',
+      metadata: [
+        {name: 'keywords', content: 'poker, preflop, preflop chart, poker training, free, software, desktop, preflop range, poker range, holdem'},
+      ],
       navbar: {
         title: 'Preflop Ranger',
         logo: {
