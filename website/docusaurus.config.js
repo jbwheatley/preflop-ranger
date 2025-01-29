@@ -10,6 +10,7 @@ const config = {
   baseUrl: '/preflop-ranger/',
   organizationName: 'io.github.jbwheatley',
   projectName: 'preflop-ranger',
+  trailingSlash: false,
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
