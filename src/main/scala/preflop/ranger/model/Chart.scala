@@ -181,7 +181,7 @@ object Chart {
       }
 
       def tooltipText(ha: HandAction): String = {
-        val ratio: Double = if (!chart.subset) 100.0 else (100.0 - ha.n) / 100
+        val ratio: Double = if (!chart.subset) 1.0 else (100.0 - ha.n) / 100
         val r             = if (ha.r > 0) Some(s"Raise: ${df.format(ha.r.toDouble / ratio)}%") else None
         val vari = ha.variableRaiseSizes.map { case (s, i) =>
           if (i > 0) Some(s"Raise (${s}x): ${df.format(i.toDouble / ratio)}%") else None

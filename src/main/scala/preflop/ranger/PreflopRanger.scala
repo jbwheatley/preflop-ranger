@@ -148,6 +148,7 @@ object PreflopRanger extends JFXApp3 {
   }
 
   private def menuCallback(borderP: BorderPane): Chart => Unit = { chart =>
+    randomiserText.text = ""
     borderP.center = chart.draw(borderP)
     borderP.bottom = new VBox() {
       children = List(chartTitleBox(chart, borderP), randomiserBox(borderP))
