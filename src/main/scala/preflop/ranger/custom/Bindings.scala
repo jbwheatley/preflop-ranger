@@ -22,7 +22,8 @@ import javafx.collections.{FXCollections, ObservableList}
 import scalafx.beans.binding.BooleanBinding
 
 object Bindings {
-  val trueBinding: BooleanBinding = new BooleanBinding(() => true)
+  val trueBinding: BooleanBinding  = new BooleanBinding(() => true)
+  val falseBinding: BooleanBinding = new BooleanBinding(() => false)
 
   def matches(var0: ObservableStringValue, var1: String): BooleanBinding = new BooleanBinding(
     new javafx.beans.binding.BooleanBinding() {

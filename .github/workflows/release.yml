@@ -125,6 +125,7 @@ jobs:
           files: ${{ env.file_name }}
           tag_name: v${{ inputs.version }}
 
+  #TODO update version number on site automagically
   delete-on-fail:
     name: Delete Tag when Release Fails
     needs: [ release ]

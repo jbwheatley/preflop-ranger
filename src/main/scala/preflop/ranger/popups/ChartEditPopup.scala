@@ -19,6 +19,7 @@ package preflop.ranger.popups
 
 import javafx.beans.InvalidationListener
 import javafx.scene.input.MouseButton
+import preflop.ranger.custom.Bindings.{falseBinding, trueBinding}
 import preflop.ranger.custom.Tooltips.showTooltip
 import preflop.ranger.custom._
 import preflop.ranger.edit.UndoRedo
@@ -28,7 +29,7 @@ import preflop.ranger.popups.ChartEditPopup.PopupScene
 import scalafx.beans.binding.BooleanBinding
 import scalafx.geometry.Insets
 import scalafx.geometry.Pos.Center
-import scalafx.scene.Scene
+import scalafx.scene.{Node, Scene}
 import scalafx.scene.control.{ScrollPane, TextField}
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.layout.GridPane.getRowIndex
@@ -44,16 +45,25 @@ class ChartEditPopup(chart: Chart) extends Popup { stage =>
   height = 600.0
   width = 450.0
   scene = new PopupScene(chart, stage)
+  x = stage.getX
+  y = stage.getY
 }
 
 object ChartEditPopup {
   private val variableRaiseSizes: Array[String] = SettingsMenu.variableRaiseSizes
 
-  private class HandActionRow(hand: String, val i: Int, val j: Int, handAction: HandAction, grid: GridPane) {
-    lazy val invalid: BooleanBinding =
-      !(raiseField.valid && callField.valid && foldField.valid && jamField.valid && noActionField.valid)
+  private class HandActionRow(
+      hand: String,
+      val i: Int,
+      val j: Int,
+      protected var initHand: HandAction,
+      grid: GridPane
+  ) {
+    lazy val invalid: BooleanBinding = !fields.map(_.valid).foldLeft(trueBinding)(_ && _)
 
-    def validate(): Option[HandAction] = {
+    lazy val updated: BooleanBinding = fields.map(_.updated).foldLeft(falseBinding)(_ || _)
+
+    def validate(): Option[(Boolean, HandAction)] = {
       val _r = raiseField.validate
       val _c = callField.validate
       val _f = foldField.validate
@@ -73,55 +83,46 @@ object ChartEditPopup {
         val l  = _l.get
         val vs = variables.map(_.get)
         if (r + c + f + j + n + l + vs.map(_._2).sum == 100) {
+          val ha = HandAction(r, j, c, l, f, n, vs.toMap)
           Some(
-            HandAction(r, j, c, l, f, n, vs.toMap)
+            (ha != initHand) -> ha
           )
         } else None
       } else None
     }
 
-    private var raiseField: HandActionTextField = new HandActionTextField(
-      handAction.r,
+    private val raiseField: HandActionTextField = new HandActionTextField(
+      initHand.r,
       (self, tf) => {
-        raiseField = tf
-        fields(0).replaceNode(tf)
         grid.children.remove(self)
         grid.add(tf, 1, (i * 13) + j + 1)
       }
     )
-    private var callField: HandActionTextField = new HandActionTextField(
-      handAction.c,
+    private val callField: HandActionTextField = new HandActionTextField(
+      initHand.c,
       (self, tf) => {
-        callField = tf
-        fields(1).replaceNode(tf)
         grid.children.remove(self)
         grid.add(tf, 2, (i * 13) + j + 1)
       }
     )
-    private var foldField: HandActionTextField = new HandActionTextField(
-      handAction.f,
+    private val foldField: HandActionTextField = new HandActionTextField(
+      initHand.f,
       (self, tf) => {
-        foldField = tf
-        fields(2).replaceNode(tf)
         grid.children.remove(self)
         grid.add(tf, 3, (i * 13) + j + 1)
       }
     )
-    private var jamField: HandActionTextField = new HandActionTextField(
-      handAction.j,
+    private val jamField: HandActionTextField = new HandActionTextField(
+      initHand.j,
       (self, tf) => {
-        jamField = tf
-        fields(3).replaceNode(tf)
         grid.children.remove(self)
         grid.add(tf, 4, (i * 13) + j + 1)
       }
     )
 
-    private var limpField: HandActionTextField = new HandActionTextField(
-      handAction.l,
+    private val limpField: HandActionTextField = new HandActionTextField(
+      initHand.l,
       (self, tf) => {
-        limpField = tf
-        fields(4).replaceNode(tf)
         grid.children.remove(self)
         grid.add(tf, 5, (i * 13) + j + 1)
       }
@@ -130,21 +131,17 @@ object ChartEditPopup {
     private val other: Array[(String, HandActionTextField)] = variableRaiseSizes.zipWithIndex
       .map { case (size, idx) =>
         size -> new HandActionTextField(
-          handAction.variableRaiseSizes.getOrElse(size, 0),
+          initHand.variableRaiseSizes.getOrElse(size, 0),
           (self, tf) => {
-            other(idx) = size -> tf
-            fields(idx + 5).replaceNode(tf)
             grid.children.remove(self)
             grid.add(tf, idx + 6, (i * 13) + j + 1)
           }
         )
       }
 
-    private var noActionField: HandActionTextField = new HandActionTextField(
-      handAction.n,
+    private val noActionField: HandActionTextField = new HandActionTextField(
+      initHand.n,
       (self, tf) => {
-        noActionField = tf
-        fields(variableRaiseSizes.length + 5).replaceNode(tf)
         grid.children.remove(self)
         grid.add(tf, variableRaiseSizes.length + 6, (i * 13) + j + 1)
       }
@@ -158,23 +155,27 @@ object ChartEditPopup {
       }
     )
 
-    private def fieldStack(field: HandActionTextField) =
-      new RectangleStack(0, 0, field)
+    private val fields: Array[HandActionTextField] = Array(
+      raiseField,
+      callField,
+      foldField,
+      jamField,
+      limpField
+    ) ++ other.map(_._2) :+ noActionField
 
-    private val fields: Array[RectangleStack] = Array(
-      fieldStack(raiseField),
-      fieldStack(callField),
-      fieldStack(foldField),
-      fieldStack(jamField),
-      fieldStack(limpField)
-    ) ++ other.map(_._2).map(fieldStack) :+ fieldStack(noActionField)
+    def toNodes: List[Node] = label +: fields.map(_.field).toList
 
-    def toNodes: List[RectangleStack] = label +: fields.toList
+    def highlight(): Unit   = label.highlight()
+    def unhighlight(): Unit = label.unhighlight()
+    def reset(update: HandAction): Unit = {
+      initHand = update
+      fields.foreach(_.reset())
+    }
   }
 
   class PopupScene(chart: Chart, popupStage: Stage) extends Scene {
     private val labels: List[String] =
-      List("Raise", "Call", "Fold", "Jam", "Limp") ++ variableRaiseSizes.map(s => s"R ${s}x") :+ "None"
+      List("Raise", "Call", "Fold", "Jam", "Limp") ++ variableRaiseSizes.map(s => s"R (${s}x)") :+ "None"
 
     private val headers = new Rectangle() {
       height = 24
@@ -207,6 +208,7 @@ object ChartEditPopup {
     }
 
     private lazy val anyInvalid: BooleanBinding = updates.map(_.invalid).reduce(_ || _)
+    private lazy val hasUpdates: BooleanBinding = updates.map(_.updated).reduce(_ || _)
 
     grid.addRow(
       rowIndex = 0,
@@ -226,7 +228,7 @@ object ChartEditPopup {
     scrollPane.viewportBoundsProperty().addListener(headerLock)
     scrollPane.vvalueProperty().addListener(headerLock)
 
-    def update(): Unit = {
+    def update(): Boolean = {
       val rows = updates.map { row =>
         row -> row.validate()
       }
@@ -234,17 +236,21 @@ object ChartEditPopup {
         case (r, Some(action)) => Left(r -> action)
         case (r, None)         => Right(r)
       }
-      valid.foreach(_._1.toNodes.foreach(_.unhighlight()))
+      valid.foreach(_._1.unhighlight())
       if (invalid.nonEmpty) {
         scrollPane.vvalue = (getRowIndex(invalid.head.toNodes.head) - 1).toDouble / grid.getRowCount
-        invalid.foreach(_.toNodes.foreach(_.highlight()))
         showTooltip(popupStage)("Values must add to 100")
+        invalid.foreach(_.highlight())
+        false
       } else {
-        val currentValuesOfUpdatedRows = valid.map { case (r, _) =>
+        val updatedRows: Array[(HandActionRow, HandAction)] = valid.collect { case (row, (true, action)) =>
+          row -> action
+        }
+        val currentValuesOfUpdatedRows = updatedRows.map { case (r, _) =>
           (r.i, r.j, chart.squares(r.i)(r.j).handActionProperty.value)
         }
         val change = () => {
-          valid.foreach { case (r, action) =>
+          updatedRows.foreach { case (r, action) =>
             chart.squares(r.i)(r.j).massUpdate(_ => action)
           }
           chart.recalcPercentages()
@@ -254,7 +260,9 @@ object ChartEditPopup {
           chart.recalcPercentages()
         }
         UndoRedo.add(Change(change, revert, "Update Chart"))
+        updatedRows.foreach { case (row, newAction) => row.reset(newAction) }
         change()
+        true
       }
     }
 
@@ -315,14 +323,17 @@ object ChartEditPopup {
             override def onLeftClick(): Unit = popupStage.close()
           },
           new LeftClickButton("Apply") {
-            disable.bind(anyInvalid)
-            override def onLeftClick(): Unit = update()
-          },
-          new LeftClickButton("OK") {
-            disable.bind(anyInvalid)
+            disable.bind(anyInvalid || !hasUpdates)
             override def onLeftClick(): Unit = {
               update()
-              popupStage.close()
+              ()
+            }
+          },
+          new LeftClickButton("OK") {
+            disable.bind(anyInvalid || !hasUpdates)
+            override def onLeftClick(): Unit = {
+              val valid = update()
+              if (valid) popupStage.close()
             }
           }
         )

@@ -26,7 +26,7 @@ import preflop.ranger.edit.EditRegistry
 import preflop.ranger.model._
 import preflop.ranger.popups._
 import scalafx.application.{JFXApp3, Platform}
-import scalafx.beans.property.BooleanProperty
+import scalafx.beans.property.{BooleanProperty, ObjectProperty}
 import scalafx.geometry.Pos.{BottomCenter, Center, TopCenter}
 import scalafx.geometry.{Insets, Pos}
 import scalafx.scene.Scene
@@ -51,8 +51,9 @@ object PreflopRanger extends JFXApp3 {
   val boxArc: Double                      = 8.0
   val boxSpacing: Double                  = 3.0
 
-  var allProfiles: Array[Profile] = _
-  var selectedProfile: Data       = _
+  var allProfiles: Array[Profile]                  = _
+  var selectedProfile: Data                        = _
+  val selectedChart: ObjectProperty[Option[Chart]] = ObjectProperty(None)
 
   val popupOpen: BooleanProperty = BooleanProperty(false)
 
@@ -73,12 +74,14 @@ object PreflopRanger extends JFXApp3 {
         fill = Color.rgb(38, 38, 38)
         root = makeScene()
       }
-      onCloseRequest = mainCloseRequest => {
-        saveProfileList()
-        if (EditRegistry.hasEdits.value) {
-          new OnCloseUnsavedPopup(mainCloseRequest).showAndWait()
+      onCloseRequest = mainCloseRequest =>
+        if (popupOpen.value) mainCloseRequest.consume()
+        else {
+          saveProfileList()
+          if (EditRegistry.hasEdits.value) {
+            new OnCloseUnsavedPopup(mainCloseRequest).showAndWait()
+          }
         }
-      }
     }
 
     Platform.runLater {
@@ -143,12 +146,14 @@ object PreflopRanger extends JFXApp3 {
         }
       }
     }
+    selectedChart.value = None
     stageScene = s
     s
   }
 
   private def menuCallback(borderP: BorderPane): Chart => Unit = { chart =>
     randomiserText.text = ""
+    selectedChart.value = Some(chart)
     borderP.center = chart.draw(borderP)
     borderP.bottom = new VBox() {
       children = List(chartTitleBox(chart, borderP), randomiserBox(borderP))
@@ -181,9 +186,10 @@ object PreflopRanger extends JFXApp3 {
 
   private def chartTitleBox(chart: Chart, container: BorderPane): StackPane = {
     def text: String =
-      if (SettingsMenu.showPercentages.get())
-        s"${chart.name.value} - ${chart.percentagesProperty.get()}"
-      else chart.name.value
+      if (SettingsMenu.showPercentages.get()) {
+        val pc = chart.percentagesProperty.get()
+        if (pc.isEmpty) chart.name.value else s"${chart.name.value} - ${chart.percentagesProperty.get()}"
+      } else chart.name.value
     val textItem = new Text(text) {
       style = "-fx-font: normal bold 11pt sans-serif"
     }

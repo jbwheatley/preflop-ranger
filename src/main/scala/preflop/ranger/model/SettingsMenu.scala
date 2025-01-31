@@ -19,6 +19,7 @@ package preflop.ranger.model
 
 import javafx.beans.value.ObservableValue
 import javafx.scene.control
+import preflop.ranger.PreflopRanger
 import preflop.ranger.PreflopRanger.{allProfiles, resetStage}
 import preflop.ranger.edit.RangerFiles.{loadProfile, saveSelectedProfile}
 import preflop.ranger.custom.{DisappearingMenuItem, SelectMenuItem}
@@ -111,6 +112,7 @@ object SettingsMenu {
       new DisappearingMenuItem(
         "Redo",
         UndoRedo.hasRedos,
+        hasShortcut = true,
         'y',
         shift = false,
         parent,
@@ -122,6 +124,7 @@ object SettingsMenu {
       new DisappearingMenuItem(
         "Redo",
         UndoRedo.hasRedos,
+        hasShortcut = true,
         'z',
         shift = true,
         parent,
@@ -215,7 +218,16 @@ object SettingsMenu {
       },
       new Menu("File") { self =>
         items = List(
-          new DisappearingMenuItem("Save", show = EditRegistry.hasEdits, 's', false, self, 0, saveSelectedProfile()),
+          new DisappearingMenuItem(
+            "Save",
+            show = EditRegistry.hasEdits,
+            hasShortcut = true,
+            's',
+            false,
+            self,
+            0,
+            saveSelectedProfile()
+          ),
           profilesMenu(self)
         )
       },
@@ -224,6 +236,7 @@ object SettingsMenu {
           new DisappearingMenuItem(
             "Undo",
             UndoRedo.hasChanges,
+            hasShortcut = true,
             'z',
             shift = false,
             self,
@@ -232,6 +245,20 @@ object SettingsMenu {
             self => UndoRedo.latestChangeDescription.onChange((_, _, c) => self.text = s"Undo $c")
           ),
           redoItem(self),
+          new SeparatorMenuItem(),
+          new DisappearingMenuItem(
+            "Edit Chart", {
+              val v = BooleanProperty(true)
+              v.bind(PreflopRanger.selectedChart.map(_.isDefined))
+              v
+            },
+            hasShortcut = false,
+            shortcutKey = '?',
+            shift = false,
+            parent = self,
+            idxInParent = 3,
+            action = PreflopRanger.selectedChart.value.foreach(new ChartEditPopup(_).showAndWait())
+          ),
           new MenuItem("Manage Actions") {
             onAction = _ => new ManageActionsPopup().showAndWait()
           }

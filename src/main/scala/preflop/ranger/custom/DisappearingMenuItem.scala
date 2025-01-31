@@ -25,6 +25,7 @@ import scalafx.scene.input.{KeyCharacterCombination, KeyCombination}
 class DisappearingMenuItem(
     name: String,
     show: BooleanProperty,
+    hasShortcut: Boolean,
     shortcutKey: Char,
     shift: Boolean,
     parent: Menu,
@@ -38,6 +39,7 @@ class DisappearingMenuItem(
     parent.items(idxInParent) = new DisappearingMenuItem(
       self.text.get(),
       show,
+      hasShortcut,
       shortcutKey,
       shift,
       parent,
@@ -51,5 +53,5 @@ class DisappearingMenuItem(
   style = if (show.get()) "-fx-text-color: black;" else "-fx-text-fill: lightgray;"
   private val modifiers: List[KeyCombination.Modifier] =
     if (shift) List(KeyCombination.ShortcutDown, KeyCombination.ShiftDown) else List(KeyCombination.ShortcutDown)
-  accelerator = new KeyCharacterCombination(shortcutKey.toString, modifiers.map(_.delegate): _*)
+  if (hasShortcut) accelerator = new KeyCharacterCombination(shortcutKey.toString, modifiers.map(_.delegate): _*)
 }

@@ -18,7 +18,7 @@
 package preflop.ranger.popups
 
 import javafx.scene.input.{KeyCode, KeyEvent}
-import preflop.ranger.custom.Bindings.trueBinding
+import preflop.ranger.custom.Bindings.{falseBinding, trueBinding}
 import preflop.ranger.custom.Tooltips.showTooltip
 import preflop.ranger.custom._
 import preflop.ranger.model.Chart.ChartSquare
@@ -73,27 +73,28 @@ object ChartSquareEditPopup {
     private val jamBox   = mkField(_.j, 3)
     private val limpBox  = mkField(_.l, 4)
 
-    grid.addRow(0, new Text("Raise:"), raiseBox)
-    grid.addRow(1, new Text("Call:"), callBox)
-    grid.addRow(2, new Text("Fold:"), foldBox)
-    grid.addRow(3, new Text("Jam:"), jamBox)
-    grid.addRow(4, new Text("Limp:"), limpBox)
+    grid.addRow(0, new Text("Raise:"), raiseBox.field)
+    grid.addRow(1, new Text("Call:"), callBox.field)
+    grid.addRow(2, new Text("Fold:"), foldBox.field)
+    grid.addRow(3, new Text("Jam:"), jamBox.field)
+    grid.addRow(4, new Text("Limp:"), limpBox.field)
 
     private val variableRaises: Array[(String, HandActionTextField)] =
       SettingsMenu.variableRaiseSizes.zipWithIndex.map { case (s, idx) =>
         val field = mkField(_.variableRaiseSizes.getOrElse(s, 0), idx + 5)
         val text  = new Text(s"Raise (${s}x):")
-        grid.addRow(idx + 5, text, field)
+        grid.addRow(idx + 5, text, field.field)
         s -> field
       }
 
     private val noActionBox = mkField(_.n, variableRaises.length + 5)
-    grid.addRow(variableRaises.length + 5, new Text("None:"), noActionBox)
+    grid.addRow(variableRaises.length + 5, new Text("None:"), noActionBox.field)
 
     private val allBoxes: List[HandActionTextField] =
       List(raiseBox, callBox, foldBox, jamBox, limpBox) ++ List(noActionBox)
 
-    private val invalid: BooleanBinding = !allBoxes.map(_.valid).foldLeft(trueBinding)(_ && _)
+    private val invalid: BooleanBinding    = !allBoxes.map(_.valid).foldLeft(trueBinding)(_ && _)
+    private val hasUpdates: BooleanBinding = allBoxes.map(_.updated).foldLeft(falseBinding)(_ || _)
 
     private val backButton = new LeftClickButton("←") {
       override def onLeftClick(): Unit = {
@@ -116,7 +117,7 @@ object ChartSquareEditPopup {
         update
         ()
       }
-      disable.bind(invalid)
+      disable.bind(invalid || !hasUpdates)
     }
 
     private val okButton = new LeftClickButton("OK") {
@@ -124,7 +125,7 @@ object ChartSquareEditPopup {
         update
         if (update) popupStage.close()
       }
-      disable.bind(invalid)
+      disable.bind(invalid || !hasUpdates)
     }
 
     def update: Boolean = {
@@ -147,6 +148,7 @@ object ChartSquareEditPopup {
         val l  = _l.get
         val vs = variables.map(_.get)
         if (r + c + f + j + n + l + vs.map(_._2).sum == 100) {
+          allBoxes.foreach(_.reset())
           square.update(
             HandAction(r, j, c, l, f, n, vs.toMap)
           )
