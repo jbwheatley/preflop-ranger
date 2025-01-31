@@ -6,6 +6,9 @@ on:
       version:
         type: String
         required: true
+      previous-version:
+        type: String
+        required: true
     secrets:
       github-packages-token:
         required: true
@@ -125,7 +128,25 @@ jobs:
           files: ${{ env.file_name }}
           tag_name: v${{ inputs.version }}
 
-  #TODO update version number on site automagically
+  update-download-page:
+    name: Update version in download page
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Replace version
+        run: |
+          sed -i -e 's/${{ inputs.previous-version }}/${{ inputs.version }}/g' ./website/src/pages/download.md
+          git config --local user.name "jbwheatley"
+          git config --local user.email "19939655+jbwheatley@users.noreply.github.com"
+          git add .
+          git commit -m "update download page version to ${{ inputs.version }}"
+          git push origin main
+
   delete-on-fail:
     name: Delete Tag when Release Fails
     needs: [ release ]
