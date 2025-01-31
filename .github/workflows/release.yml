@@ -9,9 +9,6 @@ on:
       previous-version:
         type: String
         required: true
-    secrets:
-      github-packages-token:
-        required: true
 
 permissions:
   contents: write
@@ -130,15 +127,17 @@ jobs:
 
   update-download-page:
     name: Update version in download page
+    needs: [ release ]
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.PUSH_TOKEN }}
       - name: Replace version
+        env:
+          GITHUB_TOKEN: ${{ secrets.PUSH_TOKEN }}
         run: |
           sed -i -e 's/${{ inputs.previous-version }}/${{ inputs.version }}/g' ./website/src/pages/download.md
           git config --local user.name "jbwheatley"
