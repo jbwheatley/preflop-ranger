@@ -16,15 +16,14 @@ const Block = props => (
     </Container>
 );
 
-const easy = "**Easy to use**: quickly hop between your preflop charts while playing on desktop."
-const games = "**Any game types**: switch profiles to use different range sets for different scenario, no matter the cash game or tournament format."
-const random = "**No more indecision**: use the built-in randomiser to remove any culpability for your preflop actions."
+const easy = "**Easy to use**: quickly hop between your preflop charts on desktop to help start your poker studying journey."
+const games = "**Any game types**: switch profiles to view different range sets for different scenario, no matter the cash game or tournament format."
 
 const Feature1 = () => (
     <Block align="left">
         {[
             {
-                content: [easy, games, random].join("\n\n"),
+                content: [easy, games].join("\n\n"),
                 image: `img/preview-chart.gif`,
                 imageAlign: 'left',
                 title: 'All Your Ranges in One Place'

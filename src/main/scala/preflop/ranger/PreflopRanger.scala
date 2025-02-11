@@ -20,15 +20,14 @@ package preflop.ranger
 import javafx.scene.control.ToggleGroup
 import javafx.scene.input.{MouseButton, MouseEvent}
 import javafx.stage.WindowEvent
-import preflop.ranger.edit.RangerFiles.{load, saveProfileList, writeErrorLog}
-import preflop.ranger.custom.LeftClickButton
 import preflop.ranger.edit.EditRegistry
+import preflop.ranger.edit.RangerFiles.{load, saveProfileList, writeErrorLog}
 import preflop.ranger.model._
 import preflop.ranger.popups._
 import scalafx.application.{JFXApp3, Platform}
 import scalafx.beans.property.{BooleanProperty, ObjectProperty}
+import scalafx.geometry.Insets
 import scalafx.geometry.Pos.{BottomCenter, Center, TopCenter}
-import scalafx.geometry.{Insets, Pos}
 import scalafx.scene.Scene
 import scalafx.scene.control.{ContextMenu, MenuItem, RadioMenuItem}
 import scalafx.scene.layout.Priority.Always
@@ -36,8 +35,6 @@ import scalafx.scene.layout._
 import scalafx.scene.paint._
 import scalafx.scene.shape.Rectangle
 import scalafx.scene.text.Text
-
-import scala.util.Random
 
 object PreflopRanger extends JFXApp3 {
 
@@ -47,7 +44,7 @@ object PreflopRanger extends JFXApp3 {
   val borderInset: Double                 = 25.0
   val chartMenuHeight: Double             = 32.0
   val chartTitleHeight: Double            = 25.0
-  val randomiserHeight: Double            = 50.0
+  val randomiserHeight: Double            = 0.0 // 50.0
   val boxArc: Double                      = 8.0
   val boxSpacing: Double                  = 3.0
 
@@ -136,7 +133,7 @@ object PreflopRanger extends JFXApp3 {
           top = chartMenuBar(borderP)
           center = Chart.default(borderP)
           bottom = new VBox() { v =>
-            children = List(emptyChartTitleBox(borderP), emptyRandomiserBox(borderP))
+            children = List(emptyChartTitleBox(borderP)) // , emptyRandomiserBox(borderP))
             spacing = boxSpacing
             padding = Insets(top = boxSpacing, right = 0, bottom = 0, left = 0)
             alignment = TopCenter
@@ -152,11 +149,11 @@ object PreflopRanger extends JFXApp3 {
   }
 
   private def menuCallback(borderP: BorderPane): Chart => Unit = { chart =>
-    randomiserText.text = ""
+//    randomiserText.text = ""
     selectedChart.value = Some(chart)
     borderP.center = chart.draw(borderP)
     borderP.bottom = new VBox() {
-      children = List(chartTitleBox(chart, borderP), randomiserBox(borderP))
+      children = List(chartTitleBox(chart, borderP)) // , randomiserBox(borderP))
       spacing = boxSpacing
       padding = Insets(top = boxSpacing, right = 0, bottom = 0, left = 0)
       alignment = TopCenter
@@ -230,41 +227,41 @@ object PreflopRanger extends JFXApp3 {
     }
   }
 
-  private def emptyRandomiserBox(container: BorderPane): Rectangle =
-    new Rectangle() {
-      fill = Color.SkyBlue
-      hgrow = Always
-      width.bind(container.widthProperty().subtract(2 * borderInset))
-      height = randomiserHeight
-      arcHeight = boxArc
-      arcWidth = boxArc
-    }
-
-  val randomiserText: Text = new Text("") {
-    style = "-fx-font: normal bold 20pt sans-serif"
-  }
-
-  private def randomiserBox(container: BorderPane): StackPane = new StackPane {
-    children = List(
-      new Rectangle() {
-        fill = Color.SkyBlue
-        hgrow = Always
-        width.bind(container.widthProperty().subtract(2 * borderInset))
-        height = randomiserHeight
-        arcHeight = boxArc
-        arcWidth = boxArc
-      },
-      new HBox() {
-        children = List(
-          new LeftClickButton("Randomise") {
-            override def onLeftClick(): Unit = randomiserText.text = (Random.nextInt(100) + 1).toString
-            style = "-fx-font: normal bold 10pt sans-serif"
-          },
-          randomiserText
-        )
-        spacing = 10.0
-        alignment = Pos.Center
-      }
-    )
-  }
+//  private def emptyRandomiserBox(container: BorderPane): Rectangle =
+//    new Rectangle() {
+//      fill = Color.SkyBlue
+//      hgrow = Always
+//      width.bind(container.widthProperty().subtract(2 * borderInset))
+//      height = randomiserHeight
+//      arcHeight = boxArc
+//      arcWidth = boxArc
+//    }
+//
+//  val randomiserText: Text = new Text("") {
+//    style = "-fx-font: normal bold 20pt sans-serif"
+//  }
+//
+//  private def randomiserBox(container: BorderPane): StackPane = new StackPane {
+//    children = List(
+//      new Rectangle() {
+//        fill = Color.SkyBlue
+//        hgrow = Always
+//        width.bind(container.widthProperty().subtract(2 * borderInset))
+//        height = randomiserHeight
+//        arcHeight = boxArc
+//        arcWidth = boxArc
+//      },
+//      new HBox() {
+//        children = List(
+//          new LeftClickButton("Randomise") {
+//            override def onLeftClick(): Unit = randomiserText.text = (Random.nextInt(100) + 1).toString
+//            style = "-fx-font: normal bold 10pt sans-serif"
+//          },
+//          randomiserText
+//        )
+//        spacing = 10.0
+//        alignment = Pos.Center
+//      }
+//    )
+//  }
 }
