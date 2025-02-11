@@ -6,13 +6,13 @@ hide_table_of_contents: true
 
 # Download
 
-- [**Mac OS arm64 (M1, M2, M3) .dmg** 📥](https://github.com/jbwheatley/preflop-ranger/releases/download/v1.0.2/preflop-ranger-macos-arm64-1.0.2.dmg) 
+- [**Mac OS arm64 (M1, M2, M3) .dmg** 📥](https://github.com/jbwheatley/preflop-ranger/releases/download/v1.0.3/preflop-ranger-macos-arm64-1.0.3.dmg) 
 
-- [**Mac OS x64 (pre M1) .dmg** 📥](https://github.com/jbwheatley/preflop-ranger/releases/download/v1.0.2/preflop-ranger-macos-x64-1.0.2.dmg) 
+- [**Mac OS x64 (pre M1) .dmg** 📥](https://github.com/jbwheatley/preflop-ranger/releases/download/v1.0.3/preflop-ranger-macos-x64-1.0.3.dmg) 
 
-- [**Windows .exe** 📥](https://github.com/jbwheatley/preflop-ranger/releases/download/v1.0.2/preflop-ranger-win-1.0.2.exe) 
+- [**Windows .exe** 📥](https://github.com/jbwheatley/preflop-ranger/releases/download/v1.0.3/preflop-ranger-win-1.0.3.exe) 
 
-- [**Linux .deb** 📥](https://github.com/jbwheatley/preflop-ranger/releases/download/v1.0.2/preflop-ranger-macos-arm64-1.0.2.deb) 
+- [**Linux .deb** 📥](https://github.com/jbwheatley/preflop-ranger/releases/download/v1.0.3/preflop-ranger-macos-arm64-1.0.3.deb) 
 
 Links above not working? Visit [the releases page](https://github.com/jbwheatley/preflop-ranger/releases) to download the latest version directly.
 
